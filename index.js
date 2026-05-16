@@ -6,11 +6,23 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://finalwebdevos-production.up.railway.app',
+];
+
 const io = new Server(server, {
-  cors: { origin: 'http://localhost:5173', methods: ['GET', 'POST'] }
+  cors: { origin: allowedOrigins, methods: ['GET', 'POST'] }
 });
 
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 app.use('/api/auth', require('./routes/auth'));

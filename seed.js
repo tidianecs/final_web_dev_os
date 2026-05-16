@@ -1,6 +1,6 @@
 // joj-quiz-backend/seed.js
 require('dotenv').config();
-const { sequelize, Question, Quiz, QuizQuestion } = require('./models');
+const { sequelize, Question, Quiz, QuizQuestion, MatchAnswer, GameResult, GamePlayer, Match, Game } = require('./models');
 
 const questions = [
   // ── HISTORY (10 questions) ──────────────────────────────────────────────────
@@ -201,11 +201,19 @@ async function seed() {
     await sequelize.authenticate();
     console.log('🌱 Starting seed...');
 
-    // Clear existing data (order matters due to foreign keys)
+    // ── Disable FK checks before clearing ────────────────────────────────────
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+    await MatchAnswer.destroy({ where: {}, truncate: true });
+    await GameResult.destroy({ where: {}, truncate: true });
+    await GamePlayer.destroy({ where: {}, truncate: true });
+    await Match.destroy({ where: {}, truncate: true });
+    await Game.destroy({ where: {}, truncate: true });
     await QuizQuestion.destroy({ where: {}, truncate: true });
     await Quiz.destroy({ where: {}, truncate: true });
     await Question.destroy({ where: {}, truncate: true });
-    console.log('✓ Cleared existing questions and quizzes');
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+    // ─────────────────────────────────────────────────────────────────────────
+    console.log('✓ Cleared existing data');
 
     // Insert questions
     const createdQuestions = await Question.bulkCreate(questions);
