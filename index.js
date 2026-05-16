@@ -10,6 +10,7 @@ const server = http.createServer(app);
 const allowedOrigins = [
   'http://localhost:5173',
   'https://finalwebdevos-production.up.railway.app',
+  'https://joj-quiz-frontend.vercel.app',
 ];
 
 const io = new Server(server, {
