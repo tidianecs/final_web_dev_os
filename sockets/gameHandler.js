@@ -35,6 +35,8 @@ module.exports = (io) => {
             players: {},
             matchNumber: 0,
             matchScores: {},
+            status: 'lobby',  // lobby | question | result
+            timer: null,
           };
         }
 
@@ -120,12 +122,19 @@ module.exports = (io) => {
     });
 
     // ── SUBMIT ANSWER ────────────────────────────────────────────────────────
-    socket.on('submit-answer', ({ roomCode, chosenIndex, responseMs }) => {
+    socket.on('submit-answer', ({ roomCode, chosenIndex, responseMs, questionIndex }) => {
       const room = rooms[roomCode];
       if (!room) return;
+
+      // GUARD: Only accept answers when a question is actively live
+      if (room.status !== 'question') return;
+
+      // GUARD: Reject answers for a different question index (stale/ghost answers)
+      if (questionIndex !== undefined && questionIndex !== room.currentQ) return;
+
       const userId = socket.data.userId;
 
-      // Ignore duplicate answers
+      // Ignore duplicate answers from the same player
       if (room.answers[userId] !== undefined) return;
 
       const question = room.questions[room.currentQ];
@@ -140,11 +149,12 @@ module.exports = (io) => {
       // Confirm to the player who answered
       socket.emit('answer-confirmed', { score, isCorrect });
 
-      // If everyone has answered, end round early
+      // If ALL players answered, end round early
       const totalPlayers = Object.keys(room.players).length;
       const totalAnswers = Object.keys(room.answers).length;
       if (totalAnswers >= totalPlayers) {
         clearTimeout(room.timer);
+        room.timer = null;
         endRound(io, roomCode);
       }
     });
@@ -175,8 +185,15 @@ function sendQuestion(io, roomCode) {
     return;
   }
 
+  // Destroy any previously running timer before starting a new one
+  if (room.timer) {
+    clearTimeout(room.timer);
+    room.timer = null;
+  }
+
   room.answers = {}; // reset answers for this round
   room.questionStartTime = Date.now();
+  room.status = 'question'; // OPEN: accept answers now
 
   // Send question WITHOUT correct_index
   io.to(roomCode).emit('question', {
@@ -200,6 +217,7 @@ async function endRound(io, roomCode) {
   // Prevent endRound from running multiple times for the same question
   if (room.endingRound === room.currentQ) return;
   room.endingRound = room.currentQ;
+  room.status = 'result'; // CLOSED: block any further answers for this question
 
   const question = room.questions[room.currentQ];
   if (!question) return;
@@ -283,8 +301,10 @@ async function endGame(io, roomCode) {
 
   // Final scores object: { userId: totalMatchScore }
   const finalScores = {};
+  const playerNames = {};
   Object.values(room.players).forEach(p => {
     finalScores[p.userId] = p.score;
+    playerNames[p.userId] = p.username;
   });
 
   try {
@@ -297,6 +317,7 @@ async function endGame(io, roomCode) {
   io.to(roomCode).emit('game-end', {
     winner: { userId: gameWinnerId, username: gameWinner?.username },
     finalScores,
+    playerNames,
     matchScores: room.matchScores,
   });
 
