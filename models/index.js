@@ -2,7 +2,15 @@ const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
 // Railway provides MYSQL_URL automatically — use it if present, else use individual vars
-const sequelize = process.env.MYSQL_URL
+const isProduction = !!process.env.MYSQL_URL;
+
+if (isProduction) {
+  console.log('🔗 Attempting production connection via MYSQL_URL...');
+} else {
+  console.log(`🔗 Attempting connection to ${process.env.DB_HOST}:${process.env.DB_PORT || 3306} (${process.env.DB_NAME})`);
+}
+
+const sequelize = isProduction
   ? new Sequelize(process.env.MYSQL_URL, {
       dialect: 'mysql',
       logging: false,
