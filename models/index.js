@@ -1,20 +1,25 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-// Railway provides MYSQL_URL automatically — use it if present, else use individual vars
-const isProduction = !!process.env.MYSQL_URL;
+// Use DATABASE_URL (standard for Render/TiDB) if present, else individual vars
+const connectionString = process.env.DATABASE_URL || process.env.MYSQL_URL;
 
-if (isProduction) {
-  console.log('🔗 Attempting production connection via MYSQL_URL...');
+if (connectionString) {
+  console.log('🔗 Connecting to Production DB (SSL enabled)...');
 } else {
-  console.log(`🔗 Attempting connection to ${process.env.DB_HOST}:${process.env.DB_PORT || 3306} (${process.env.DB_NAME})`);
+  console.log(`🔗 Connecting to Local DB: ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}`);
 }
 
-const sequelize = isProduction
-  ? new Sequelize(process.env.MYSQL_URL, {
+const sequelize = connectionString
+  ? new Sequelize(connectionString, {
       dialect: 'mysql',
       logging: false,
-      dialectOptions: { connectTimeout: 60000 },
+      dialectOptions: {
+        connectTimeout: 60000,
+        ssl: {
+          rejectUnauthorized: true, // Required for TiDB Cloud
+        },
+      },
     })
   : new Sequelize(
       process.env.DB_NAME,

@@ -11,6 +11,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'https://finalwebdevos-production.up.railway.app',
   'https://joj-quiz-frontend.vercel.app',
+  /\.onrender\.com$/, // Allow any Render subdomain
 ];
 
 const io = new Server(server, {
@@ -20,7 +21,12 @@ const io = new Server(server, {
 app.use(cors({
   origin: (origin, callback) => {
     console.log('Incoming request from origin:', origin);
-    if (!origin || allowedOrigins.includes(origin)) {
+    const isAllowed = !origin || allowedOrigins.some(pattern => {
+      if (pattern instanceof RegExp) return pattern.test(origin);
+      return pattern === origin;
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
       console.error('CORS blocked for origin:', origin);
