@@ -199,6 +199,8 @@ const quizzes = [
 async function seed() {
   try {
     await sequelize.authenticate();
+    // Ensure tables exist before we try to delete from them
+    await sequelize.sync();
     console.log('🌱 Starting seed...');
 
     // ── Disable FK checks before clearing ────────────────────────────────────

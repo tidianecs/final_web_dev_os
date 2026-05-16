@@ -38,10 +38,11 @@ const { sequelize } = require('./models');
 
 require('./sockets/gameHandler')(io);
 
-sequelize.authenticate()
-  .then(() => console.log('✅ Database connected via Sequelize'))
-  .catch(err => console.error('❌ DB connection failed:', err));
-
-server.listen(process.env.PORT, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
-});
+sequelize.sync()
+  .then(() => {
+    console.log('✅ Database synced (tables created/verified)');
+    server.listen(process.env.PORT, () => {
+      console.log(`Server running on port ${process.env.PORT}`);
+    });
+  })
+  .catch(err => console.error('❌ DB sync/connection failed:', err));
